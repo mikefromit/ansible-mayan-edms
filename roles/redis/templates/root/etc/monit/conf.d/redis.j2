@@ -1,0 +1,5 @@
+check process redis-server with pidfile "/var/run/redis/redis-server.pid"
+    start program = "service redis-server start"
+    stop program = "service redis-server stop"
+    if failed host {{ redis.config.bind }} port {{ redis.config.port }} then restart
+    if 5 restarts within 5 cycles then timeout

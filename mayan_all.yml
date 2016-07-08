@@ -1,0 +1,3 @@
+---
+- include: mayan_db.yml
+- include: mayan_web.yml

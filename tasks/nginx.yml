@@ -1,0 +1,13 @@
+---
+- name: install nginx config
+  template: >
+    src={{ template_root }}/etc/nginx/sites-available/app.conf.j2
+    dest=/etc/nginx/sites-available/{{ nginx_app_name }}.conf
+
+- name: enable nginx config
+  file: >
+    src=/etc/nginx/sites-available/{{ nginx_app_name }}.conf
+    dest=/etc/nginx/sites-enabled/{{ nginx_app_name }}.conf
+    state=link
+    force=yes
+  notify: restart nginx

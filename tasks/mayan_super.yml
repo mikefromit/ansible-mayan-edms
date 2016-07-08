@@ -1,0 +1,23 @@
+---
+- name: supervisor - create directories
+  file: >
+    path="{{ item }}"
+    state=directory
+    owner=www-data
+    group=www-data
+  with_items:
+    - /etc/supervisor
+    - /etc/supervisor/conf.d
+  when: ansible_distribution == 'Ubuntu'
+
+- name: supervisor - install mayan app configuration
+  template: >
+    src={{ template_root }}/etc/supervisor/conf.d/mayan.conf.j2
+    dest=/etc/supervisor/conf.d/mayan.conf
+  when: ansible_distribution == 'Ubuntu'
+
+- name: supervisor - install mayan celery configuration
+  template: >
+    src={{ template_root }}/etc/supervisor/conf.d/mayan-celery.j2
+    dest=/etc/supervisor/conf.d/mayan-celery.conf
+  when: ansible_distribution == 'Ubuntu'

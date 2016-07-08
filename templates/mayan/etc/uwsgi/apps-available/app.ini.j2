@@ -1,0 +1,14 @@
+[uwsgi]
+chdir = /usr/share/mayan-edms/lib/python2.7/site-packages/mayan
+chmod-socket = 664
+chown-socket = www-data:www-data
+env = DJANGO_SETTINGS_MODULE=mayan.settings.production
+gid = www-data
+logto = /var/log/uwsgi/%n.log
+pythonpath = /usr/share/mayan-edms/lib/python2.7/site-packages
+master = True
+max-requests = 5000
+socket = /usr/share/mayan-edms/uwsgi.sock
+uid = www-data
+vacuum = True
+wsgi-file = /usr/share/mayan-edms/lib/python2.7/site-packages/mayan/wsgi.py

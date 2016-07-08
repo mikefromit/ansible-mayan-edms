@@ -1,0 +1,10 @@
+---
+- name: configure mayan db server
+  hosts: mayandbserver
+  sudo: true
+  roles:
+    - role: postgres
+      postgresql_version: 9.4
+  tasks:
+    - include: tasks/postgres.yml
+    - include: tasks/mayan_db.yml

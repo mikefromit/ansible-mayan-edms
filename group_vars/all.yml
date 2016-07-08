@@ -1,0 +1,6 @@
+---
+apt_cache_valid_time: 86400
+pg_user: postgres
+postgres_log_dir: "/var/log/postgresql"
+postgres_logfile_name: "postgresql-{{ postgresql_version }}-main.log"
+postgresql_version: 9.4

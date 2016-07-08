@@ -1,0 +1,26 @@
+---
+- name: Install package
+  pip: >
+    name=uwsgi
+
+- name: Create apps-available
+  file: >
+    path=/etc/uwsgi/apps-available
+    state=directory
+
+- name: Create apps-enabled
+  file: >
+    path=/etc/uwsgi/apps-enabled
+    state=directory
+
+- name: Create log directory
+  file: >
+    path=/var/log/uwsgi
+    state=directory
+
+- name: Create init script
+  template: >
+    src=root/etc/init/uwsgi.conf.j2
+    dest=/etc/init/uwsgi.conf
+  notify:
+    - restart uwsgi

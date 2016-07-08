@@ -1,0 +1,6 @@
+---
+- name: install uwsgi config
+  template: >
+    src={{ template_root }}/etc/uwsgi/apps-available/app.ini.j2
+    dest=/usr/share/mayan-edms/uwsgi.ini
+  when: no_wsgi is not defined

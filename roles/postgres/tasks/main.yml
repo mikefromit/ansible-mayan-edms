@@ -1,0 +1,48 @@
+---
+- name: Install dependencies
+  apt: >
+    name="{{item}}"
+    state=present
+  with_items: ["python-psycopg2", "python-pycurl"]
+  when: localdev is not defined and rds_instance is not defined
+
+- name: Add repository key
+  apt_key: >
+    url=https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    id=ACCC4CF8
+    state=present
+  when: localdev is not defined and rds_instance is not defined
+
+- name: Add official repository
+  apt_repository: >
+    repo="deb http://apt.postgresql.org/pub/repos/apt/ precise-pgdg main"
+    state=present
+  when: localdev is not defined and rds_instance is not defined
+
+- name: Install latest version
+  apt: >
+    pkg="{{item}}"
+    state=latest
+    update_cache=yes
+    cache_valid_time={{ apt_cache_valid_time }}
+  with_items:
+    - "postgresql-{{postgresql_version}}"
+    - "postgresql-client-{{postgresql_version}}"
+  when: localdev is not defined and rds_instance is not defined
+
+- name: Install postgresql configuration
+  template: >
+   src=root/etc/postgresql/postgresql.conf.j2
+   dest=/etc/postgresql/{{ postgresql_version }}/main/postgresql.conf
+  when: localdev is not defined and rds_instance is not defined
+
+- name: Install pg_hba configuration
+  template: >
+   src=root/etc/postgresql/pg_hba.conf.j2
+   dest=/etc/postgresql/{{ postgresql_version }}/main/pg_hba.conf
+  when: localdev is not defined and rds_instance is not defined
+
+- name: Enable SSL in local Postgresql Instance
+  action: lineinfile dest=/etc/postgresql/9.4/main/pg_hba.conf insertafter="^#\sIPv4\slocal.+" line="hostssl     all  all  0.0.0.0/0  md5"
+  when: localdev is not defined and rds_instance is not defined and skip_pg_ssl is not defined
+

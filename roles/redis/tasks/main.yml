@@ -1,0 +1,61 @@
+---
+- name: Install dependencies
+  apt: >
+    pkg=python-software-properties
+    state=installed
+    update-cache=yes
+  when: localdev is not defined
+
+- name: Add repository
+  apt_repository: >
+    repo=ppa:chris-lea/redis-server
+    state=present
+  when: localdev is not defined
+
+- name: Install latest version
+  apt: >
+    pkg={{ item }}
+    state=installed
+    update-cache=yes
+  register: redis_install
+  with_items:
+    - redis-server
+  when: localdev is not defined
+
+- name: Disable obsolete init.d service
+  service: >
+    name=redis-server
+    enabled=no
+    state=stopped
+  when: redis_install.changed and localdev is not defined
+
+- name: Remove obsolete init.d service
+  file:
+    path: /etc/init.d/redis-server
+    state: absent
+  when: redis_install.changed and localdev is not defined
+
+- name: Install init script
+  template: >
+    src=root/etc/init/redis-server.conf.j2
+    dest=/etc/init/redis-server.conf
+  notify:
+    - restart redis
+  when: localdev is not defined
+
+- name: Create data directory
+  file: >
+    state=directory
+    path={{ redis.config.dir }}
+    owner={{ redis.user }}
+    group={{ redis.group }}
+    recurse=yes
+  when: localdev is not defined
+
+- name: Install config
+  template: >
+    src=root/etc/redis/redis.conf.j2
+    dest=/etc/redis/redis.conf
+  notify:
+    - restart redis
+  when: localdev is not defined

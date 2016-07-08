@@ -1,0 +1,13 @@
+[mayan]
+192.168.1.22
+
+[mayan:vars]
+ansible_ssh_host=192.168.1.22
+ansible_ssh_port=22
+ansible_ssh_user=ubuntu
+
+[mayandbserver:children]
+mayan
+
+[secrets:children]
+mayan

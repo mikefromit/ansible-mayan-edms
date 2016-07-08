@@ -1,0 +1,14 @@
+description "uWSGI"
+start on runlevel [2345]
+stop on runlevel [06]
+
+env UWSGI=/usr/local/bin/uwsgi
+env LOGTO=/var/log/uwsgi/emperor.log
+pre-start script
+    mkdir -p -m 0755 /var/run/biglearn/celery
+    chown -R www-data:www-data /var/run/biglearn
+    mkdir -p -m 0755 /var/run/openstax-labs
+    chown www-data:www-data /var/run/openstax-labs
+end script
+
+exec $UWSGI --master --emperor /etc/uwsgi/apps-enabled --die-on-term --uid www-data --gid www-data --logto $LOGTO

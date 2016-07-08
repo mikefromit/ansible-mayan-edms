@@ -1,0 +1,226 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+# This module borrows heavily from the postgresql_db module.
+
+DOCUMENTATION = '''
+---
+module: postgresql_schema
+short_description: Add or remove PostgreSQL schemas from a remote host.
+description:
+   - Add or remove PostgreSQL schemas from a remote host.
+version_added: "1.6.6"
+options:
+  name:
+    description:
+      - name of the schema to add or remove
+    required: true
+    default: null
+  db:
+    description:
+      - name of the containing database
+    required: true
+    default: null
+  login_user:
+    description:
+      - The username used to authenticate with
+    required: false
+    default: null
+  login_password:
+    description:
+      - The password used to authenticate with
+    required: false
+    default: null
+  login_host:
+    description:
+      - Host running the database
+    required: false
+    default: localhost
+  owner:
+    description:
+      - Name of the role to set as owner of the schema
+    required: false
+    default: null
+  port:
+    description:
+      - Database port to connect to.
+    required: false
+    default: 5432
+  state:
+    description:
+      - The database state
+    required: false
+    default: present
+    choices: [ "present", "absent" ]
+notes:
+   - |
+       The default authentication assumes that you are either
+       logging in as or sudo'ing to the C(postgres) account
+       on the host.
+   - |
+       This module uses I(psycopg2), a Python PostgreSQL database
+       adapter. You must ensure that psycopg2 is installed on the
+       host before using this module. If the remote host is the
+       PostgreSQL server (which is the default case), then PostgreSQL
+       must also be installed on the remote host. For Ubuntu-based
+       systems, install the C(postgresql), C(libpq-dev), and
+       C(python-psycopg2) packages on the remote host before using
+       this module.
+requirements: [ psycopg2 ]
+author: navilan.
+'''
+
+EXAMPLES = '''
+# Create a new schema with name "myschema" in  database "acme"
+- postgresql_schema: name=myschema db=acme
+
+'''
+
+try:
+    import psycopg2
+    import psycopg2.extras
+except ImportError:
+    postgresqldb_found = False
+else:
+    postgresqldb_found = True
+
+
+class NotSupportedError(Exception):
+    pass
+
+
+# ===========================================
+# PostgreSQL module specific support methods.
+#
+
+def set_owner(cursor, schema, owner):
+    query = "ALTER SCHEMA \"%s\" OWNER TO \"%s\"" % (schema, owner)
+    cursor.execute(query)
+    return True
+
+
+def get_schema_info(cursor, db, schema):
+    query = """
+    SELECT schema_name AS name, schema_owner AS owner
+    FROM information_schema.schemata
+    WHERE catalog_name = %(db)s AND
+          schema_name = %(schema)s
+    """
+    cursor.execute(query, {'db': db, 'schema': schema})
+    return cursor.fetchone()
+
+
+def schema_exists(cursor, db, schema):
+    return get_schema_info(cursor, db, schema) is not None
+
+
+def schema_delete(cursor, db, schema):
+    if schema_exists(cursor, db, schema):
+        query = "DROP SCHEMA \"%s\"" % schema
+        cursor.execute(query)
+        return True
+    else:
+        return False
+
+
+def schema_create(cursor, db, schema, owner):
+    schema_info = get_schema_info(cursor, db, schema)
+    if not schema_info:
+        if owner:
+            owner = " AUTHORIZATION \"%s\"" % owner
+        query = 'CREATE SCHEMA "%s"%s' % (schema, owner)
+        cursor.execute(query)
+        return True
+    else:
+        if owner and owner != schema_info['owner']:
+            return set_owner(cursor, db, owner)
+        else:
+            return False
+
+
+def schema_matches(cursor, db, schema, owner):
+    schema_info = get_schema_info(cursor, db, schema)
+    if not schema_info:
+        return False
+    else:
+        return not owner or owner == db_info['owner']
+
+
+# ===========================================
+# Module execution.
+#
+def main():
+    module = AnsibleModule(
+        argument_spec=dict(
+            login_user=dict(default="postgres"),
+            login_password=dict(default=""),
+            login_host=dict(default=""),
+            port=dict(default="5432"),
+            schema=dict(required=True, aliases=['name']),
+            db=dict(required=True),
+            owner=dict(default=""),
+            state=dict(default="present", choices=["absent", "present"]),
+        ),
+        supports_check_mode=True)
+
+    if not postgresqldb_found:
+        module.fail_json(msg="the python psycopg2 module is required")
+
+    db = module.params["db"]
+    schema = module.params["schema"]
+    owner = module.params["owner"]
+    state = module.params["state"]
+    changed = False
+
+    # To use defaults values, keyword arguments must be absent, so
+    # check which values are empty and don't include in the **kw
+    # dictionary
+    params_map = {
+        "login_host": "host",
+        "login_user": "user",
+        "login_password": "password",
+        "port": "port"
+    }
+    kw = dict((params_map[k], v) for (k, v) in module.params.iteritems()
+              if k in params_map and v != '')
+    try:
+        db_connection = psycopg2.connect(database=db, **kw)
+        # Enable autocommit so we can create databases
+        if psycopg2.__version__ >= '2.4.2':
+            db_connection.autocommit = True
+        else:
+            db_connection.set_isolation_level(psycopg2
+                                              .extensions
+                                              .ISOLATION_LEVEL_AUTOCOMMIT)
+        cursor = db_connection.cursor(
+            cursor_factory=psycopg2.extras.DictCursor)
+    except Exception as e:
+        module.fail_json(msg="unable to connect to database: %s" % e)
+
+    try:
+        if module.check_mode:
+            if state == "absent":
+                changed = not schema_exists(cursor, db, schema)
+            elif state == "present":
+                changed = not schema_matches(cursor, db, schema, owner)
+            module.exit_json(
+                changed=changed,
+                db=db,
+                schema=schema,
+                owner=owner)
+
+        if state == "absent":
+            changed = schema_delete(cursor, db, schema)
+
+        elif state == "present":
+            changed = schema_create(cursor, db, schema, owner)
+    except NotSupportedError as e:
+        module.fail_json(msg=str(e))
+    except Exception as e:
+        module.fail_json(msg="Database query failed: %s" % e)
+
+    module.exit_json(changed=changed, db=db, schema=schema, owner=owner)
+
+# import module snippets
+from ansible.module_utils.basic import *  # NOQA
+main()

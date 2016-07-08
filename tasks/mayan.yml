@@ -1,0 +1,21 @@
+---
+- name: Install settings config
+  template: >
+    src={{ template_root }}/settings/local.py.j2
+    dest={{ mayan_dest_dir }}/mayan-edms/mayan/settings/local.py
+
+- name: Migrate the database or initialize the project
+  shell: >
+    chdir="{{ mayan_dest_dir }}/mayan-edms" {{ mayan_dest_dir }}/mayan-edms/bin/mayan-edms.py initialsetup
+
+- name: Collect static files
+  shell: >
+      chdir="{{ mayan_dest_dir }}/mayan-edms" {{ mayan_dest_dir }}/mayan-edms/bin/mayan-edms.py collectstatic --noinput
+
+- name: fix mayan directory permissions
+  file: >
+    state=directory
+    owner=www-data
+    group=www-data
+    recurse=yes
+    path={{ mayan_dest_dir }}/mayan-edms

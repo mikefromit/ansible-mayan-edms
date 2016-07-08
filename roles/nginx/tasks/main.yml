@@ -1,0 +1,30 @@
+---
+- name: Create log directory
+  file: >
+    path=/var/log/nginx
+    state=directory
+
+- name: Install package
+  apt: >
+    pkg={{ item }}
+    state=latest
+    update_cache=yes
+    cache_valid_time={{ apt_cache_valid_time }}
+  with_items:
+    - nginx
+  notify:
+    - restart nginx
+
+- name: Replace config
+  template: >
+    src=root/etc/nginx/nginx.conf.j2
+    dest=/etc/nginx/nginx.conf
+  notify:
+    - restart nginx
+
+- name: delete default vhost
+  file: >
+    path=/etc/nginx/sites-enabled/default
+    state=absent
+  notify:
+    - restart nginx

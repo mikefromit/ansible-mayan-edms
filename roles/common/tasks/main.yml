@@ -1,0 +1,38 @@
+---
+- name: Set hostname
+  hostname: >
+    name={{ hostname_override }}
+  when: hostname_override is defined
+
+- name: Set timezone to UTC
+  shell: >
+    echo Etc/UTC > /etc/timezone
+
+- name: Set localtime to UTC
+  file: >
+    src=/usr/share/zoneinfo/Etc/UTC
+    dest=/etc/localtime
+
+- name: Reconfigure tzdata
+  command: >
+    dpkg-reconfigure -f noninteractive tzdata
+
+- name: Update apt keys
+  command: >
+    apt-key update
+
+- name: Upgrade apt
+  apt: >
+    upgrade=yes
+    update_cache=yes
+
+- name: Install packages
+  apt: >
+    pkg={{ item }}
+    state=installed
+    force=yes
+  with_items:
+    - ubuntu-keyring
+    - build-essential
+    - curl
+    - libicu-dev

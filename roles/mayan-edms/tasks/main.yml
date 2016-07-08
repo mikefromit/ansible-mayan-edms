@@ -1,0 +1,35 @@
+---
+- name: Ensure destination directory exists
+  file: >
+    path="{{ mayan_dest_dir }}"
+    state=directory
+
+- name: Create virtualenv for mayan-edms
+  pip: >
+    chdir="{{ mayan_dest_dir }}"
+    name={{ item }}
+    state=present
+    virtualenv="{{ mayan_dest_dir }}/mayan-edms"
+  with_items:
+    - mayan-edms
+    - psycopg2
+    - redis
+    - uwsgi
+  tags: configuration
+
+- name: Ensure log directory exists
+  file: >
+    path="/var/log/mayan"
+    state=directory
+
+- name: Ensure log directory exists
+  file: >
+    path="/var/log/uwsgi"
+    state=directory
+
+- name: create convenience symlink
+  file: >
+    src="{{ mayan_dest_dir }}/mayan-edms/lib/python2.7/site-packages/mayan"
+    dest="{{ mayan_dest_dir }}/mayan-edms/mayan"
+    state=link
+    force=yes

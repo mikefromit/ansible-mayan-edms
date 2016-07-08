@@ -1,0 +1,3 @@
+---
+- name: refresh supervisor
+  shell: /usr/bin/supervisorctl reread && /usr/bin/supervisorctl update
